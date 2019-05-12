@@ -6,7 +6,7 @@ using Winwink.MySqlite.REPL.User;
 
 namespace Winwink.MySqlite.REPL
 {
-    public class Pager:IDisposable
+    public class Pager : IDisposable
     {
         public const int PageSize = 4096; //页大小
         public const int TableMaxPages = 100; //单表最大页数 100
@@ -42,18 +42,12 @@ namespace Winwink.MySqlite.REPL
                 {
                     _fileStream.Read(_pages[pageNumber], 0, PageSize);
                 }
-                else if (pageNumber == pageCount)
+
+                var additionalRowsNumber = FileLength % PageSize;
+                if (additionalRowsNumber > 0)
                 {
-                    var additionalRowsNumber = FileLength % PageSize;
-                    if (additionalRowsNumber > 0)
-                    {
-                        var offset = FileLength % PageSize;
-                        _fileStream.Read(_pages[pageNumber], 0, offset);
-                    }
-                    else
-                    {
-                        _fileStream.Read(_pages[pageNumber], 0, PageSize);
-                    }
+                    var offset = FileLength % PageSize;
+                    _fileStream.Read(_pages[pageNumber], 0, offset);
                 }
             }
 
