@@ -35,11 +35,7 @@ namespace Winwink.MySqlite.REPL.User
             }
 
             var bytes = row.Serialize();
-            var pageNumber = MaxRowNumber / row.RowPerPage;
-            var rowNumberInPage = MaxRowNumber % row.RowPerPage;
-            var offset = rowNumberInPage * row.RowSize;
-            var page = Pager.GetPage(pageNumber);
-
+            RowSlot(Pager, MaxRowNumber, out var page, out var offset);
             Array.Copy(bytes, 0, page, offset, row.RowSize);
             MaxRowNumber++;
         }
@@ -52,15 +48,11 @@ namespace Winwink.MySqlite.REPL.User
             Console.WriteLine("id\tusername\temail");
             for (int i = 0; i < MaxRowNumber; i++)
             {
-                var pageNumber = i / userRow.RowPerPage;
-                var rowNumberInPage = i % userRow.RowPerPage;
-                var offset = rowNumberInPage * userRow.RowSize;
+                RowSlot(Pager, i, out var page, out var offset);
                 byte[] rowData = new byte[userRow.RowSize];
-
-                Array.Copy(Pager.GetPage(pageNumber), offset, rowData, 0, userRow.RowSize);
+                Array.Copy(page, offset, rowData, 0, userRow.RowSize);
 
                 var row = UserRow.DeSerialize(rowData);
-
                 Console.WriteLine($"{row.id}\t{row.username}\t{row.email}");
                 result[i] = row;
             }
@@ -84,6 +76,16 @@ namespace Winwink.MySqlite.REPL.User
             {
                 Pager.Flush(pageNumber, additionRowsNumber * userRow.RowSize);
             }
+        }
+
+        private void RowSlot(Pager pager, int rowNumber, out byte[] page, out int offset)
+        {
+            UserRow userRow = new UserRow();
+            var pageNumber = rowNumber / userRow.RowPerPage;
+            var rowNumberInPage = rowNumber % userRow.RowPerPage;
+
+            page = Pager.GetPage(pageNumber);
+            offset = rowNumberInPage * userRow.RowSize;
         }
     }
 }

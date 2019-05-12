@@ -38,16 +38,22 @@ namespace Winwink.MySqlite.REPL
             {
                 _pages[pageNumber] = new byte[PageSize];
                 var pageCount = FileLength / PageSize;
+                _fileStream.Seek(pageNumber * PageSize, SeekOrigin.Begin);
                 if (pageNumber < pageCount)
                 {
                     _fileStream.Read(_pages[pageNumber], 0, PageSize);
                 }
-
-                var additionalRowsNumber = FileLength % PageSize;
-                if (additionalRowsNumber > 0)
+                else if (pageNumber == pageCount)
                 {
                     var offset = FileLength % PageSize;
-                    _fileStream.Read(_pages[pageNumber], 0, offset);
+                    if (offset > 0)
+                    {
+                        _fileStream.Read(_pages[pageNumber], 0, offset);
+                    }
+                    else
+                    {
+                        _fileStream.Read(_pages[pageNumber], 0, PageSize);
+                    }
                 }
             }
 

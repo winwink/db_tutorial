@@ -213,6 +213,8 @@ For now, we'll wait to flush the cache to disk until the user closes the connect
      return META_COMMAND_UNRECOGNIZED_COMMAND;
 ```
 
+在我们当前的设计中, 文件长度实际意味者数据库的行数, 因此我们需要在文件末尾写入一个部分页(不完整的页). 那也是我们的`pager_flush`方法有一个pageNumber和size的原因.
+这不是一个最好的设计, 但是它能帮我们更简单更块的到B树的实现.
 In our current design, the length of the file encodes how many rows are in the database, so we need to write a partial page at the end of the file. That's why `pager_flush()` takes both a page number and a size. It's not the greatest design, but it will go away pretty quickly when we start implementing the B-tree.
 
 ```diff
@@ -239,6 +241,7 @@ In our current design, the length of the file encodes how many rows are in the d
 +}
 ```
 
+最后, 我们需要把文件名作为一个命令行参数.
 Lastly, we need to accept the filename as a command-line argument. Don't forget to also add the extra argument to `do_meta_command`:
 
 ```diff
@@ -280,6 +283,7 @@ db > .exit
 ~
 ```
 
+为了更有趣, 让我们能看下`mydb.db`是怎么存储的吧. 我将用vim作为十六进制编辑器来文件内容存储的状态.
 For extra fun, let's take a look at `mydb.db` to see how our data is being stored. I'll use vim as a hex editor to look at the memory layout of the file:
 
 ```
@@ -287,6 +291,14 @@ vim mydb.db
 :%!xxd
 ```
 {% include image.html url="assets/images/file-format.png" description="Current File Format" %}
+
+前4个字节是第一行的id. 它是用小端的顺序存储的, 因此先出现的是01, 然后再是00 00 00. 我们用`memcpy`来从我们的`Row`结构拷贝到页缓存, 意味者结构是以小端的形式保存在内存中. 那是我编译的这台机器的属性. 如果我们向在我的机器上写数据库文件, 然后再大端的机器上读, 我们不得不改变我们的`serialize_row`和`deserialize_row`方法, 使得以相同的顺序存储和读取字节.
+
+接下来的33个字节是以空字符结尾的字符串. 很明显`cstack`的ASCII十六进制为`63 73 74 61 63 6b`, 接着`00`, 剩下的未使用.
+
+接下来的256字节以同样的方式存储着email信息. 这里我们在空字符后面能看到一些随机的垃圾. 这最有可能是由于未初始化的内存导致的. 我们copy整个256字节的email信息到文件中,包括字符后的所有字节. 内存中是怎样的, 就怎样保存在文件中, 由于我们用了空字符结尾的字符串, 所以不影响.
+
+**注意**: 假如我们想确保所有字节都是初始化的, 应该在copy`username`和`email`的时候用`strncpy`来代替`memcpy`.
 
 The first four bytes are the id of the first row (4 bytes because we store a `uint32_t`). It's stored in little-endian byte order, so the least significant byte comes first (01), followed by the higher-order bytes (00 00 00). We used `memcpy()` to copy bytes from our `Row` struct into the page cache, so that means the struct was laid out in memory in little-endian byte order. That's an attribute of the machine I compiled the program for. If we wanted to write a database file on my machine, then read it on a big-endian machine, we'd have to change our `serialize_row()` and `deserialize_row()` methods to always store and read bytes in the same order.
 
@@ -307,6 +319,10 @@ and `email` fields of rows in `serialize_row`, like so:
 +    strncpy(destination + EMAIL_OFFSET, source->email, EMAIL_SIZE);
  }
 ```
+## 结论
+好吧, 我们已经有持久化了. 还不是最好的, 例如加入我们还没输入.exit就直接关掉程序, 变更就会丢失. 另外, 我们是把所有页都写回文件, 即使这些页都没有改变过. 这些问题之后我们再来修复.
+
+下次我们将会介绍`cursors`, 使得实现b树更容易.
 
 ## Conclusion
 
