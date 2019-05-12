@@ -1,6 +1,4 @@
 ﻿using System;
-using System.IO;
-using Winwink.MySqlite.REPL.User;
 
 namespace Winwink.MySqlite.REPL
 {
@@ -8,13 +6,11 @@ namespace Winwink.MySqlite.REPL
     {
         static void Main(string[] args)
         {
-            string filePath = Path.Combine(Environment.CurrentDirectory, "Mysqlite.data");
-            UserTable table = UserTable.Open(filePath);
-            CommaParser parser = new CommaParser();
-            parser.Table = table;
-            while (true)
+            UserTable.Load();
+            while(true)
             {
                 var input = Console.ReadLine();
+                CommaParser parser = new CommaParser();
                 parser.Parser(input);
             }
         }

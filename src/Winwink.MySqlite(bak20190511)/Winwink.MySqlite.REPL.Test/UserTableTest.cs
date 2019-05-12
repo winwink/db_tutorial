@@ -1,7 +1,4 @@
-using System;
-using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Winwink.MySqlite.REPL.User;
 
 namespace Winwink.MySqlite.REPL.Test
 {
@@ -29,21 +26,6 @@ namespace Winwink.MySqlite.REPL.Test
             for (int i = 0; i < 1400; i++)
             {
                 parser.Parser($"insert {i} {i+"a"} {i+"b"}");
-            }
-            parser.Parser("save");
-            parser.Parser("exit");
-        }
-
-        [TestMethod]
-        public void InsertTest2()
-        {
-            string filePath = Path.Combine(Environment.CurrentDirectory, "Mysqlite.data");
-            UserTable table = UserTable.Open(filePath);
-            CommaParser parser = new CommaParser();
-            parser.Table = table;
-            for (int i = 0; i < 14; i++)
-            {
-                parser.Parser($"insert {i} {i + "a"} {i + "b"}");
             }
             parser.Parser("save");
             parser.Parser("exit");

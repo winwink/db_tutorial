@@ -1,9 +1,9 @@
 ---
-title: Part 5 - Persistence to Disk
+title: Part 5 - 持久化到磁盘
 date: 2017-09-08
 ---
 
-> "Nothing in the world can take the place of persistence." -- [Calvin Coolidge](https://en.wikiquote.org/wiki/Calvin_Coolidge)
+在这个世界上没有什么能替代持久化.[Calvin Coolidge](https://en.wikiquote.org/wiki/Calvin_Coolidge)
 
 Our database lets you insert records and read them back out, but only as long as you keep the program running. If you kill the program and start it back up, all your records are gone. Here's a spec for the behavior we want:
 
@@ -28,16 +28,15 @@ it 'keeps data after closing connection' do
   ])
 end
 ```
+像sqlite一样, 我们将用保存整个数据到文件的方式进行持久化.
 
-Like sqlite, we're going to persist records by saving the entire database to a file.
+我们已经将数据行序列化为页大小的块, 为了增加持久化, 我们能简单将块写入文件, 并且当程序启动的时候, 从文件再读入内存.
 
-We already set ourselves up to do that by serializing rows into page-sized memory blocks. To add persistence, we can simply write those blocks of memory to a file, and read them back into memory the next time the program starts up.
-
-To make this easier, we're going to make an abstraction called the pager. We ask the pager for page number `x`, and the pager gives us back a block of memory. It first looks in its cache. On a cache miss, it copies data from disk into memory (by reading the database file).
+为了让这个实现起来更容易, 我们创建一个抽象叫做"pager"(寻页机?). 我们向pager请求访问页数'x', pager给我们返回一个内存块. 它先在缓存中寻找, 如果缓存未命中, 则从文件拷贝到内存中.
 
 {% include image.html url="assets/images/arch-part5.gif" description="How our program matches up with SQLite architecture" %}
 
-The Pager accesses the page cache and the file. The Table object makes requests for pages through the pager:
+Pager负责访问页缓存和文件. Table对象通过pager请求页.
 
 ```diff
 +struct Pager_t {
@@ -53,12 +52,10 @@ The Pager accesses the page cache and the file. The Table object makes requests 
    uint32_t num_rows;
  };
 ```
-
-I'm renaming `new_table()` to `db_open()` because it now has the effect of opening a connection to the database. By opening a connection, I mean:
-
-- opening the database file
-- initializing a pager data structure
-- initializing a table data structure
+我重命名"new_table()"为"db_open()", 因为它现在有打开数据库的效果了. 打开一个数据库连接, 意味者:
+- 打开数据库文件
+- 初始化一个pager数据结构 
+- 初始化一个table数据结构
 
 ```diff
 -Table* new_table() {
@@ -122,8 +119,8 @@ Following our new abstraction, we move the logic for fetching a page into its ow
  }
 ```
 
-The `get_page()` method has the logic for handling a cache miss. We assume pages are saved one after the other in the database file: Page 0 at offset 0, page 1 at offset 4096, page 2 at offset 8192, etc. If the requested page lies outside the bounds of the file, we know it should be blank, so we just allocate some memory and return it. The page will be added to the file when we flush the cache to disk later.
-
+这个`get_page`方法能够处理缓存未命中的情况, 我们假设页面是一个接一个的保存在数据库文件中, Page 0 在offset 0, page 1 在offset 4096, page 2在offset 8192 等等.
+加入请求的页在文件的边界之外, 我们知道它应该是空的, 因此我们只需要分配一些内存并返回即可. 这个页将会在我们将缓存刷新到磁盘上保存到文件上.
 
 ```diff
 +void* get_page(Pager* pager, uint32_t page_num) {
@@ -219,7 +216,7 @@ For now, we'll wait to flush the cache to disk until the user closes the connect
 In our current design, the length of the file encodes how many rows are in the database, so we need to write a partial page at the end of the file. That's why `pager_flush()` takes both a page number and a size. It's not the greatest design, but it will go away pretty quickly when we start implementing the B-tree.
 
 ```diff
-+void pager_flush(Pager* pager, uint32_t page_num, uint32_t size) {
++void ,(Pager* pager, uint32_t page_num, uint32_t size) {
 +  if (pager->pages[page_num] == NULL) {
 +    printf("Tried to flush null page\n");
 +    exit(EXIT_FAILURE);
