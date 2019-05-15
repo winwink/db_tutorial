@@ -9,14 +9,14 @@ namespace Winwink.MySqlite.REPL
     {
         public UserTable Table;
         public int RowNumber;
-        public bool IsEndOfTable;
+
+        public bool IsEndOfTable => RowNumber == Table.MaxRowNumber;
 
         public static Cursor TableStart(UserTable table)
         {
             Cursor cursor = new Cursor();
             cursor.Table = table;
             cursor.RowNumber = 0;
-            cursor.IsEndOfTable = table.MaxRowNumber == 0;
             return cursor;
         }
 
@@ -25,8 +25,22 @@ namespace Winwink.MySqlite.REPL
             Cursor cursor = new Cursor();
             cursor.Table = table;
             cursor.RowNumber = table.MaxRowNumber;
-            cursor.IsEndOfTable = true;
             return cursor;
+        }
+
+        public void CursorAdvance()
+        {
+            RowNumber++;
+        }
+
+        public void CursorValue(out byte[] page, out int offset)
+        {
+            UserRow userRow = new UserRow();
+            var pageNumber = this.RowNumber / userRow.RowPerPage;
+            var rowNumberInPage = this.RowNumber % userRow.RowPerPage;
+
+            page = this.Table.Pager.GetPage(pageNumber);
+            offset = rowNumberInPage * userRow.RowSize;
         }
     }
 }

@@ -13,6 +13,7 @@ namespace Winwink.MySqlite.REPL.User
         public int RowPerPage {
             get { return Pager.PageSize / RowSize; } 
         } //单页最大行数 14
+
         public byte[] Serialize()
         {
             var byte1 = BitConverter.GetBytes(id);

@@ -97,6 +97,8 @@ Advancing the cursor in our current table structure is as simple as incrementing
 +}
 ```
 
+最终我们改变我们的`virtual machine`方法来使用`cursor`抽象. 当我们插入一行的时候, 我们打开一个表末尾的游标, 向这个游标的位置写数据, 然后关闭游标.
+
 Finally we can change our "virtual machine" methods to use the cursor abstraction. When inserting a row, we open a cursor at the end of table, write to that cursor location, then close the cursor.
 
 ```diff
